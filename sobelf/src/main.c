@@ -858,6 +858,13 @@ main( int argc, char ** argv )
     struct timeval t1, t2;
     double duration ;
     
+    int rank, size;
+    int msg;
+    int w, h, image_no, work;
+    pixel p;
+
+    MPI_Status status;
+
     /* MPI Initialization */
     MPI_Init(&argc, &argv);
 
@@ -867,32 +874,111 @@ main( int argc, char ** argv )
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    /* Check command-line arguments */
+        /* Check command-line arguments */
     if ( argc < 3 )
     {
         fprintf( stderr, "Usage: %s input.gif output.gif \n", argv[0] ) ;
         return 1 ;
     }
 
-    input_filename = argv[1] ;
-    output_filename = argv[2] ;
+    //rank 0 stuff
+    if (rank == 0) { 
+        //reading file
+        input_filename = argv[1] ;
+        output_filename = argv[2] ;
 
-    /* IMPORT Timer start */
-    gettimeofday(&t1, NULL);
+        /* IMPORT Timer start */
+        gettimeofday(&t1, NULL);
 
-    /* Load file and store the pixels in array */
-    image = load_pixels( input_filename ) ;
-    if ( image == NULL ) { return 1 ; }
+        /* Load file and store the pixels in array */
+        image = load_pixels( input_filename ) ;
+        if ( image == NULL ) { return 1 ; }
 
-    /* IMPORT Timer stop */
-    gettimeofday(&t2, NULL);
+        /* IMPORT Timer stop */
+        gettimeofday(&t2, NULL);
 
-    duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
+        duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
 
-    printf( "GIF loaded from file %s with %d image(s) in %lf s\n", 
-            input_filename, image->n_images, duration ) ;
+        printf( "GIF loaded from file %s with %d image(s) in %lf s\n", 
+                input_filename, image->n_images, duration ) ;
 
-    /* FILTER Timer start */
+        //distributing tasks (splitting the gif into images)
+        for (int i = 0; i < images -> n_images; i++)
+        {
+            //ready to work, this should contain an array with the processed file too
+            MPI_Recv(&msg, 1, MPI_INT, MPI_ANY_SOURCE, -1, MPI_COMM_WORLD, &status); 
+            if (msg = 1){
+                //have image to send
+
+            }
+
+            msg = 0;
+            MPI_Send(&msg, 1, MPI_INT, status.MPI_SOURCE, 1, MPI_COMM_WORLD); //start of information
+            msg = i;
+            MPI_Send(&msg, 1, MPI_INT, status.MPI_SOURCE, 1, MPI_COMM_WORLD); //image number
+            msg = image -> width;
+            MPI_Send(&msg, 1, MPI_INT, status.MPI_SOURCE, 1, MPI_COMM_WORLD); //width
+            msg = image -> height;
+            MPI_Send(&msg, 1, MPI_INT, status.MPI_SOURCE, 1, MPI_COMM_WORLD); //height
+            for ( j = 0 ; j < image->width[i] * image->height[i] ; j++ ) {
+                MPI_Send(image->p[i][j], 3, MPI_INT, status.MPI_SOURCE, 1, MPI_COMM_WORLD);
+            }
+
+        }
+
+        for (int i = 0; i < size; i++){
+            //ready to work, this should contain an array with the processed file too
+            MPI_Recv(&msg, 1, MPI_INT, MPI_ANY_SOURCE, -1, MPI_COMM_WORLD, &status); 
+            if (msg = 1){
+                //have image to send
+
+            }
+            msg = -1;
+            MPI_Send(&msg, 1, MPI_INT, status.MPI_SOURCE, 1, MPI_COMM_WORLD); //nothing else to do
+
+        }
+
+        //stitch all the images together
+
+    } else {
+        msg = 0;
+        MPI_Send(&msg, 1, MPI_INT, 0, 1, MPI_COMM_WORLD); //ready to work
+
+
+        MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //start of info
+        start = msg;
+        while (work == 0){
+            image -> n_images = 1;
+            MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //image number
+            image_no = 1;
+            MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //width
+            image -> width = msg;
+            MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //height
+            image -> height = msg;
+            for ( j = 0 ; j < w * h ; j++ ) {
+                MPI_Recv(&msg, 3, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //pixels
+                for (int i = 0; i < 3; i++){
+                // a bit more nasty than it is
+                }
+                image -> p[0][j].r = p
+            }
+
+            //process image
+
+
+            //send the image 
+            msg = 1; 
+            MPI_Send(&msg, 1, MPI_INT, 0, 1, MPI_COMM_WORLD); //letting root know there is an image
+            for ( j = 0 ; j < w * h ; j++ ) {
+                MPI_Send(image -> p[0][j], 3, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //pixels
+                // a bit more nasty than it is
+            }
+
+            MPI_Recv(&msg, 1, MPI_INT, 0, 1, MPI_COMM_WORLD); //checking if there is still something to do
+            work = msg;
+        }
+    }
+
     gettimeofday(&t1, NULL);
 
     /* Convert the pixels into grayscale */
