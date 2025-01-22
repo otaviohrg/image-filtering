@@ -3,6 +3,7 @@
  *
  * Image Filtering Project
  */
+#include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -856,6 +857,15 @@ main( int argc, char ** argv )
     animated_gif * image ;
     struct timeval t1, t2;
     double duration ;
+    
+    /* MPI Initialization */
+    MPI_Init(&argc, &argv);
+
+    /* Get the rank of the current task and the number
+     * of MPI processe
+     */
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     /* Check command-line arguments */
     if ( argc < 3 )
