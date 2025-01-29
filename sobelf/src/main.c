@@ -861,6 +861,7 @@ main( int argc, char ** argv )
     int rank, size;
     int msg;
     int w, h, image_no, work;
+    int machine_to;
     pixel p;
 
     MPI_Status status;
@@ -906,12 +907,17 @@ main( int argc, char ** argv )
         for (int i = 0; i < images -> n_images; i++)
         {
             //ready to work, this should contain an array with the processed file too
-            MPI_Recv(&msg, 1, MPI_INT, MPI_ANY_SOURCE, -1, MPI_COMM_WORLD, &status); 
+            MPI_Recv(&msg, 1, MPI_INT, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, &status); 
+            machine_to = status.MPI_ANY_SOURCE;
             if (msg = 1){
-                //have image to send
-
+                //have image to receive
+                MPI_Recv(&msg, 1, MPI_INT, machine_to, 1, MPI_COMM_WORLD, &status);
+                image_no = msg; //number of the image processed
+                for (j = 0; j < image->width[image_no] * image->height[image_no]; j++){
+                    //receive the image info
+                }
             }
-
+            //send image to block
             msg = 0;
             MPI_Send(&msg, 1, MPI_INT, status.MPI_SOURCE, 1, MPI_COMM_WORLD); //start of information
             msg = i;
@@ -921,32 +927,31 @@ main( int argc, char ** argv )
             msg = image -> height;
             MPI_Send(&msg, 1, MPI_INT, status.MPI_SOURCE, 1, MPI_COMM_WORLD); //height
             for ( j = 0 ; j < image->width[i] * image->height[i] ; j++ ) {
-                MPI_Send(image->p[i][j], 3, MPI_INT, status.MPI_SOURCE, 1, MPI_COMM_WORLD);
+                //MPI_Send(image->p[i][j], 3, MPI_INT, status.MPI_SOURCE, 1, MPI_COMM_WORLD); 
+                //send the image info, this should be 3 values for each pixel
             }
-
         }
 
         for (int i = 0; i < size; i++){
             //ready to work, this should contain an array with the processed file too
             MPI_Recv(&msg, 1, MPI_INT, MPI_ANY_SOURCE, -1, MPI_COMM_WORLD, &status); 
             if (msg = 1){
-                //have image to send
+                //have image to receive
 
             }
             msg = -1;
-            MPI_Send(&msg, 1, MPI_INT, status.MPI_SOURCE, 1, MPI_COMM_WORLD); //nothing else to do
+            MPI_Send(&msg, 1, MPI_INT, status.MPI_SOURCE, 1, MPI_COMM_WORLD); //nothing else to do and end process
 
         }
-
         //stitch all the images together
 
-    } else {
+    } else { //for non root machine
         msg = 0;
         MPI_Send(&msg, 1, MPI_INT, 0, 1, MPI_COMM_WORLD); //ready to work
 
 
         MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //start of info
-        start = msg;
+        work = msg;
         while (work == 0){
             image -> n_images = 1;
             MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //image number
@@ -959,8 +964,9 @@ main( int argc, char ** argv )
                 MPI_Recv(&msg, 3, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //pixels
                 for (int i = 0; i < 3; i++){
                 // a bit more nasty than it is
+                // maybe just send each pixel individually
                 }
-                image -> p[0][j].r = p
+                //image -> p[0][j].r = p
             }
 
             //process image
