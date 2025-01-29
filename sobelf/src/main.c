@@ -860,9 +860,14 @@ main( int argc, char ** argv )
     
     int rank, size;
     int msg;
-    int w, h, image_no, work;
+    int j;
+    int image_no, work;
     int machine_to;
-    pixel p;
+
+    //these are for the processing machines to create a gif
+    int * width;
+    int * height;
+    pixel ** p;
 
     MPI_Status status;
 
@@ -904,117 +909,159 @@ main( int argc, char ** argv )
                 input_filename, image->n_images, duration ) ;
 
         //distributing tasks (splitting the gif into images)
-        for (int i = 0; i < images -> n_images; i++)
-        {
+        gettimeofday(&t1, NULL); //the other half is only done by rank 0
+
+        for (int i = 0; i < image -> n_images; i++) {
             //ready to work, this should contain an array with the processed file too
             MPI_Recv(&msg, 1, MPI_INT, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, &status); 
-            machine_to = status.MPI_ANY_SOURCE;
+            machine_to = status.MPI_SOURCE;
+            printf("image %d, work_status = %d, sending to = %d\n",  i, work, machine_to);
+            //by default the very first msg will be 0
+            if (msg == 1){
+                //have image to receive
+                MPI_Recv(&msg, 1, MPI_INT, machine_to, 1, MPI_COMM_WORLD, &status);
+                image_no = msg; //number of the image processed
+                for (j = 0; j < image->width[image_no] * image->height[image_no]; j++){
+                    //receive the image info
+                    MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //r pixel
+                    image -> p[image_no][j].r = msg;
+                    MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //g pixel
+                    image -> p[image_no][j].g = msg;
+                    MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //b pixel
+                    image -> p[image_no][j].b = msg;
+                }
+            } 
+            //send image to block
+            msg = 0;
+            MPI_Send(&msg, 1, MPI_INT, machine_to, 1, MPI_COMM_WORLD); //start of information
+            msg = i;
+            MPI_Send(&msg, 1, MPI_INT, machine_to, 1, MPI_COMM_WORLD); //image number
+            msg = image -> width[i];
+            MPI_Send(&msg, 1, MPI_INT, machine_to, 1, MPI_COMM_WORLD); //width
+            msg = image -> height[i];
+            MPI_Send(&msg, 1, MPI_INT, machine_to, 1, MPI_COMM_WORLD); //height
+            for ( j = 0 ; j < image->width[i] * image->height[i] ; j++ ) { 
+                //sending for each pixel of image i
+                msg = image -> p[i][j].r;
+                MPI_Send(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD); //r pixel
+                msg = image -> p[i][j].g;
+                MPI_Send(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD); //g pixel
+                msg = image -> p[i][j].b;
+                MPI_Send(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD); //b pixel
+            }
+        }
+        //no more images to send, telling processes to stop
+        for (int i = 0; i < size; i++){
+            MPI_Recv(&msg, 1, MPI_INT, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, &status); 
             if (msg = 1){
                 //have image to receive
                 MPI_Recv(&msg, 1, MPI_INT, machine_to, 1, MPI_COMM_WORLD, &status);
                 image_no = msg; //number of the image processed
                 for (j = 0; j < image->width[image_no] * image->height[image_no]; j++){
                     //receive the image info
+                    MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //r pixel
+                    image -> p[image_no][j].r = msg;
+                    MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //g pixel
+                    image -> p[image_no][j].g = msg;
+                    MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //b pixel
+                    image -> p[image_no][j].b = msg;
                 }
-            }
-            //send image to block
-            msg = 0;
-            MPI_Send(&msg, 1, MPI_INT, status.MPI_SOURCE, 1, MPI_COMM_WORLD); //start of information
-            msg = i;
-            MPI_Send(&msg, 1, MPI_INT, status.MPI_SOURCE, 1, MPI_COMM_WORLD); //image number
-            msg = image -> width;
-            MPI_Send(&msg, 1, MPI_INT, status.MPI_SOURCE, 1, MPI_COMM_WORLD); //width
-            msg = image -> height;
-            MPI_Send(&msg, 1, MPI_INT, status.MPI_SOURCE, 1, MPI_COMM_WORLD); //height
-            for ( j = 0 ; j < image->width[i] * image->height[i] ; j++ ) {
-                //MPI_Send(image->p[i][j], 3, MPI_INT, status.MPI_SOURCE, 1, MPI_COMM_WORLD); 
-                //send the image info, this should be 3 values for each pixel
-            }
-        }
-
-        for (int i = 0; i < size; i++){
-            //ready to work, this should contain an array with the processed file too
-            MPI_Recv(&msg, 1, MPI_INT, MPI_ANY_SOURCE, -1, MPI_COMM_WORLD, &status); 
-            if (msg = 1){
-                //have image to receive
-
             }
             msg = -1;
             MPI_Send(&msg, 1, MPI_INT, status.MPI_SOURCE, 1, MPI_COMM_WORLD); //nothing else to do and end process
-
         }
-        //stitch all the images together
+        //images are updated directly
 
     } else { //for non root machine
         msg = 0;
         MPI_Send(&msg, 1, MPI_INT, 0, 1, MPI_COMM_WORLD); //ready to work
 
-
         MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //start of info
         work = msg;
         while (work == 0){
-            image -> n_images = 1;
+            //allocating memory for image here
+            n_images = 1;
+            width = (int *)malloc( 1 * sizeof(int)); //its just a single image here
+            height = (int *)malloc( 1 * sizeof(int));
+            p = (pixel **)malloc ( 1 * sizeof(pixel *));
+            
             MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //image number
-            image_no = 1;
+            image_no = msg;
             MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //width
-            image -> width = msg;
+            width[0] = msg;
             MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //height
-            image -> height = msg;
-            for ( j = 0 ; j < w * h ; j++ ) {
-                MPI_Recv(&msg, 3, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //pixels
-                for (int i = 0; i < 3; i++){
-                // a bit more nasty than it is
-                // maybe just send each pixel individually
-                }
-                //image -> p[0][j].r = p
+            height[0] = msg;
+            for (j = 0; j < width[0] * height[0]; j++){ //allocating memory for pixels
+                p[j] = (pixel *)malloc(width[0] * height[0] * sizeof(pixel));
             }
 
+            for ( j = 0 ; j < w * h ; j++ ) {
+                // maybe just send each pixel individually
+                MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //r pixel
+                image -> p[0][j].r = msg;
+                MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //g pixel
+                image -> p[0][j].g = msg;
+                MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //b pixel
+                image -> p[0][j].b = msg;
+            }
+            
             //process image
-
+            apply_gray_filter(image);
+            apply_blur_filter(image, 5, 20);
+            apply_sobel_filter(image);
 
             //send the image 
             msg = 1; 
             MPI_Send(&msg, 1, MPI_INT, 0, 1, MPI_COMM_WORLD); //letting root know there is an image
+            msg = image_no;
+            MPI_Send(&msg, 1, MPI_INT, 0, 1, MPI_COMM_WORLD);
             for ( j = 0 ; j < w * h ; j++ ) {
-                MPI_Send(image -> p[0][j], 3, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //pixels
+                msg = image -> p[0][j].r;
+                MPI_Send(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD); //r pixel
+                msg = image -> p[0][j].g;
+                MPI_Send(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD); //g pixel
+                msg = image -> p[0][j].b;
+                MPI_Send(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD); //b pixel
                 // a bit more nasty than it is
             }
 
-            MPI_Recv(&msg, 1, MPI_INT, 0, 1, MPI_COMM_WORLD); //checking if there is still something to do
+            MPI_Recv(&msg, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, &status); //checking if there is still something to do
             work = msg;
         }
     }
 
-    gettimeofday(&t1, NULL);
 
-    /* Convert the pixels into grayscale */
-    apply_gray_filter( image ) ;
+    //Single process
+    ///* Convert the pixels into grayscale */
+    //apply_gray_filter( image ) ;
 
-    /* Apply blur filter with convergence value */
-    apply_blur_filter( image, 5, 20 ) ;
+    ///* Apply blur filter with convergence value */
+    //apply_blur_filter( image, 5, 20 ) ;
 
-    /* Apply sobel filter on pixels */
-    apply_sobel_filter( image ) ;
+    ///* Apply sobel filter on pixels */
+    //apply_sobel_filter( image ) ;
 
-    /* FILTER Timer stop */
-    gettimeofday(&t2, NULL);
+    if (rank == 0) { //only first rank does these stuff
+        /* Overall Timer stop */
+        gettimeofday(&t2, NULL);
 
-    duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
+        duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
 
-    printf( "SOBEL done in %lf s\n", duration ) ;
+        printf( "SOBEL done in %lf s\n", duration ) ;
 
-    /* EXPORT Timer start */
-    gettimeofday(&t1, NULL);
+        /* EXPORT Timer start */
+        gettimeofday(&t1, NULL);
 
-    /* Store file from array of pixels to GIF file */
-    if ( !store_pixels( output_filename, image ) ) { return 1 ; }
+        /* Store file from array of pixels to GIF file */
+        if ( !store_pixels( output_filename, image ) ) { return 1 ; }
 
-    /* EXPORT Timer stop */
-    gettimeofday(&t2, NULL);
+        /* EXPORT Timer stop */
+        gettimeofday(&t2, NULL);
 
-    duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
+        duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
 
-    printf( "Export done in %lf s in file %s\n", duration, output_filename ) ;
+        printf( "Export done in %lf s in file %s\n", duration, output_filename ) ;
+    }
 
     return 0 ;
 }
