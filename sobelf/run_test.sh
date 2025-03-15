@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#SBATCH -n 20
-#SBATCH -N 20
+#SBATCH -n 5
+#SBATCH -N 5
 
 make
 

@@ -3,11 +3,12 @@
  *
  * Image Filtering Project
  */
-#include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <sys/time.h>
+#include <mpi.h>
+#include <omp.h>
 
 #include "gif_lib.h"
 
@@ -92,7 +93,7 @@ load_pixels( char * filename )
         width[i] = g->SavedImages[i].ImageDesc.Width ;
         height[i] = g->SavedImages[i].ImageDesc.Height ;
 
-#if SOBELF_DEBUG
+    #if SOBELF_DEBUG
         printf( "Image %d: l:%d t:%d w:%d h:%d interlace:%d localCM:%p\n",
                 i, 
                 g->SavedImages[i].ImageDesc.Left,
@@ -102,7 +103,7 @@ load_pixels( char * filename )
                 g->SavedImages[i].ImageDesc.Interlace,
                 g->SavedImages[i].ImageDesc.ColorMap
                 ) ;
-#endif
+    #endif
     }
 
 
@@ -114,13 +115,13 @@ load_pixels( char * filename )
         return NULL ;
     }
 
-#if SOBELF_DEBUG
+    #if SOBELF_DEBUG
     printf( "Global color map: count:%d bpp:%d sort:%d\n",
             g->SColorMap->ColorCount,
             g->SColorMap->BitsPerPixel,
             g->SColorMap->SortFlag
             ) ;
-#endif
+    #endif
 
     /* Allocate the array of pixels to be returned */
     p = (pixel **)malloc( n_images * sizeof( pixel * ) ) ;
@@ -188,10 +189,10 @@ load_pixels( char * filename )
     image->p = p ;
     image->g = g ;
 
-#if SOBELF_DEBUG
+    #if SOBELF_DEBUG
     printf( "-> GIF w/ %d image(s) with first image of size %d x %d\n",
             image->n_images, image->width[0], image->height[0] ) ;
-#endif
+    #endif
 
     return image ;
 }
@@ -202,9 +203,9 @@ output_modified_read_gif( char * filename, GifFileType * g )
     GifFileType * g2 ;
     int error2 ;
 
-#if SOBELF_DEBUG
+    #if SOBELF_DEBUG
     printf( "Starting output to file %s\n", filename ) ;
-#endif
+    #endif
 
     g2 = EGifOpenFileName( filename, false, &error2 ) ;
     if ( g2 == NULL )
@@ -274,13 +275,13 @@ store_pixels( char * filename, animated_gif * image )
     if ( moy < 0 ) moy = 0 ;
     if ( moy > 255 ) moy = 255 ;
 
-#if SOBELF_DEBUG
+    #if SOBELF_DEBUG
     printf( "[DEBUG] Background color (%d,%d,%d) -> (%d,%d,%d)\n",
             image->g->SColorMap->Colors[ image->g->SBackGroundColor ].Red,
             image->g->SColorMap->Colors[ image->g->SBackGroundColor ].Green,
             image->g->SColorMap->Colors[ image->g->SBackGroundColor ].Blue,
             moy, moy, moy ) ;
-#endif
+    #endif
 
     colormap[0].Red = moy ;
     colormap[0].Green = moy ;
@@ -317,14 +318,14 @@ store_pixels( char * filename, animated_gif * image )
                 if ( moy < 0 ) moy = 0 ;
                 if ( moy > 255 ) moy = 255 ;
 
-#if SOBELF_DEBUG
+    #if SOBELF_DEBUG
                 printf( "[DEBUG] Transparency color image %d (%d,%d,%d) -> (%d,%d,%d)\n",
                         i,
                         image->g->SColorMap->Colors[ tr_color ].Red,
                         image->g->SColorMap->Colors[ tr_color ].Green,
                         image->g->SColorMap->Colors[ tr_color ].Blue,
                         moy, moy, moy ) ;
-#endif
+    #endif
 
                 for ( k = 0 ; k < n_colors ; k++ )
                 {
@@ -349,10 +350,10 @@ store_pixels( char * filename, animated_gif * image )
                         return 0 ;
                     }
 
-#if SOBELF_DEBUG
+    #if SOBELF_DEBUG
                     printf( "[DEBUG]\tNew color %d\n",
                             n_colors ) ;
-#endif
+    #endif
 
                     colormap[n_colors].Red = moy ;
                     colormap[n_colors].Green = moy ;
@@ -364,10 +365,10 @@ store_pixels( char * filename, animated_gif * image )
                     n_colors++ ;
                 } else
                 {
-#if SOBELF_DEBUG
+    #if SOBELF_DEBUG
                     printf( "[DEBUG]\tFound existing color %d\n",
                             found ) ;
-#endif
+    #endif
                     image->g->ExtensionBlocks[j].Bytes[3] = found ;
                 }
             }
@@ -402,14 +403,14 @@ store_pixels( char * filename, animated_gif * image )
                     if ( moy < 0 ) moy = 0 ;
                     if ( moy > 255 ) moy = 255 ;
 
-#if SOBELF_DEBUG
+    #if SOBELF_DEBUG
                     printf( "[DEBUG] Transparency color image %d (%d,%d,%d) -> (%d,%d,%d)\n",
                             i,
                             image->g->SColorMap->Colors[ tr_color ].Red,
                             image->g->SColorMap->Colors[ tr_color ].Green,
                             image->g->SColorMap->Colors[ tr_color ].Blue,
                             moy, moy, moy ) ;
-#endif
+    #endif
 
                     for ( k = 0 ; k < n_colors ; k++ )
                     {
@@ -434,10 +435,10 @@ store_pixels( char * filename, animated_gif * image )
                             return 0 ;
                         }
 
-#if SOBELF_DEBUG
+    #if SOBELF_DEBUG
                         printf( "[DEBUG]\tNew color %d\n",
                                 n_colors ) ;
-#endif
+    #endif
 
                         colormap[n_colors].Red = moy ;
                         colormap[n_colors].Green = moy ;
@@ -449,10 +450,10 @@ store_pixels( char * filename, animated_gif * image )
                         n_colors++ ;
                     } else
                     {
-#if SOBELF_DEBUG
+    #if SOBELF_DEBUG
                         printf( "[DEBUG]\tFound existing color %d\n",
                                 found ) ;
-#endif
+    #endif
                         image->g->SavedImages[i].ExtensionBlocks[j].Bytes[3] = found ;
                     }
                 }
@@ -460,10 +461,10 @@ store_pixels( char * filename, animated_gif * image )
         }
     }
 
-#if SOBELF_DEBUG
+    #if SOBELF_DEBUG
     printf( "[DEBUG] Number of colors after background and transparency: %d\n",
             n_colors ) ;
-#endif
+    #endif
 
     p = image->p ;
 
@@ -471,10 +472,10 @@ store_pixels( char * filename, animated_gif * image )
     for ( i = 0 ; i < image->n_images ; i++ )
     {
 
-#if SOBELF_DEBUG
+    #if SOBELF_DEBUG
         printf( "OUTPUT: Processing image %d (total of %d images) -> %d x %d\n",
                 i, image->n_images, image->width[i], image->height[i] ) ;
-#endif
+    #endif
 
         for ( j = 0 ; j < image->width[i] * image->height[i] ; j++ ) 
         {
@@ -499,10 +500,10 @@ store_pixels( char * filename, animated_gif * image )
                     return 0 ;
                 }
 
-#if SOBELF_DEBUG
+    #if SOBELF_DEBUG
                 printf( "[DEBUG] Found new %d color (%d,%d,%d)\n",
                         n_colors, p[i][j].r, p[i][j].g, p[i][j].b ) ;
-#endif
+    #endif
 
                 colormap[n_colors].Red = p[i][j].r ;
                 colormap[n_colors].Green = p[i][j].g ;
@@ -512,9 +513,9 @@ store_pixels( char * filename, animated_gif * image )
         }
     }
 
-#if SOBELF_DEBUG
+    #if SOBELF_DEBUG
     printf( "OUTPUT: found %d color(s)\n", n_colors ) ;
-#endif
+    #endif
 
 
     /* Round up to a power of 2 */
@@ -523,9 +524,9 @@ store_pixels( char * filename, animated_gif * image )
         n_colors = (1 << GifBitSize(n_colors) ) ;
     }
 
-#if SOBELF_DEBUG
+    #if SOBELF_DEBUG
     printf( "OUTPUT: Rounding up to %d color(s)\n", n_colors ) ;
-#endif
+    #endif
 
     /* Change the color map inside the animated gif */
     ColorMapObject * cmo ;
@@ -639,6 +640,7 @@ apply_blur_filter( animated_gif * image, int size, int threshold )
 
 
     /* Process all images */
+    #pragma omp parallel for
     for ( i = 0 ; i < image->n_images ; i++ )
     {
         n_iter = 0 ;
@@ -760,9 +762,9 @@ apply_blur_filter( animated_gif * image, int size, int threshold )
         }
         while ( threshold > 0 && !end ) ;
 
-#if SOBELF_DEBUG
+    #if SOBELF_DEBUG
 	printf( "BLUR: number of iterations for image %d\n", n_iter ) ;
-#endif
+    #endif
 
         free (new) ;
     }
@@ -846,6 +848,85 @@ apply_sobel_filter( animated_gif * image )
 
 }
 
+//transpose the (1d array) //i think its best to avoid parallelising on this level, or leave it for cuda
+pixel *
+transpose (pixel * pixel_array, int width, int height){
+    pixel * temp;
+    temp = (pixel *)malloc(width * height * sizeof(pixel));
+    for (int i = 0; i < height; i++){
+        for (int j = 0; j < width; j++){
+            temp[(j * height) + i] = pixel_array[(i * width) + j];
+        }
+    }
+    return temp;
+}
+
+//the paddings here are horizontal (cutting the height)
+pixel *
+pad_frame (pixel * pixel_array, int width, int height, int * splits, int n_splits, int pad_size){
+    pixel * temp = (pixel *)malloc((height + (2 * pad_size * (n_splits - 1))) * width * sizeof(pixel)); 
+    //need to be careful here esp when pad > split size, but if thats the case you should not really split this small anymore
+    
+    int split_idx = 1; //the first is the very point is 0, cause its more convenient
+    int i_temp = 0;
+    for (int i = 0; i < height; i++){
+        if (split_idx < n_splits && i == splits[split_idx] + pad_size){ 
+            for (int j = 0; j < 2 * pad_size * width; j++){
+                temp[i_temp] = pixel_array[((i - (2 *pad_size)) * width) + j]; //+1 because you still want to copy this line too
+                i_temp++;
+            }
+            split_idx ++;
+        }
+        for (int j = 0; j < width; j++){
+            temp[i_temp] = pixel_array[(i *  width) + j];
+            i_temp++;
+        }
+    }
+    return temp;
+}
+
+pixel * 
+pad_remove (pixel * pixel_array, int width, int height, int * splits, int n_splits, int pad_size){
+    pixel * temp = (pixel *)malloc(width * height * sizeof(pixel));
+    int split_idx = 1; //cause the first point is 0
+    int i_pad = 0;
+    for (int i = 0; i < height; i++){
+        if (split_idx < n_splits && i == splits[split_idx]){ //1 because of indexing
+            i_pad += 2 * (pad_size) * width;
+            split_idx++;
+        }
+        for (int j = 0; j < width; j++){
+            temp[(i * width) + j] = pixel_array[i_pad];
+            i_pad++;
+        }
+    }
+    return temp;
+}
+
+/*
+pixel *
+pad_remove_local (pixel * pixel_array, int width, int height, int pad_size, int rank, int cluster){
+    //this is an option but its a bit troublesome to implement cause you need to update gather
+    int n_pixels;
+    if (rank != 0 && rank != cluster - 1){
+        n_pixels = height - (2 * pad_size);
+        n_pixels *= width;
+    } else {
+        n_pixels = height - (pad_size);
+        n_pixels *= width;
+    }
+
+    pixel * temp = (pixel *)malloc(n_pixels * sizeof(pixel));
+    for (int i = 0; i < n_pixels; i++){
+        if (rank == cluster - 1){
+            temp[i] = pixel_array[i];
+        } else {
+            temp[i] = pixel_array[i + (pad_size * width)];
+        }
+    }
+    return temp;
+} */
+
 /*
  * Main entry point
  */
@@ -855,41 +936,64 @@ main( int argc, char ** argv )
     char * input_filename ; 
     char * output_filename ;
     animated_gif * image ;
-    struct timeval t1, t2;
+    struct timeval t1, t2, t3, t4;
     double duration ;
-    
-    int rank, size;
-    int msg;
-    int j;
-    int image_no, work;
-    int machine_to;
 
-    //these are for the processing machines to create a gif
-    int * width;
-    int * height;
-    pixel ** p;
+//Init MPI/OMP
+    int process_Rank, size_of_Cluster;
+    int threads;
 
-    MPI_Status status;
+//for sharing info over mpi;
+    pixel ** send_pixels, * for_free;
+    animated_gif * img_temp;
+    int num_images, offset, split_offset;
+    int img_width, img_height;
+    int ** original_split, ** displacement, ** scounts;
 
-    /* MPI Initialization */
     MPI_Init(&argc, &argv);
+    MPI_Comm_size(MPI_COMM_WORLD, &size_of_Cluster);
+    MPI_Comm_rank(MPI_COMM_WORLD, &process_Rank);
 
-    /* Get the rank of the current task and the number
-     * of MPI processe
-     */
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-
-        /* Check command-line arguments */
-    if ( argc < 3 )
+//OMP getting number of threads
+    #pragma omp parallel  
     {
+    #pragma omp master
+    { 
+       //this is just the first thread operating with respect to the local mpi process
+        threads = omp_get_num_threads();
+    }
+    }
+
+/*Creating an MPI Datatype*/
+    MPI_Datatype Pixel_MPI;
+    int lengths[3] = {1, 1, 1};
+    
+    MPI_Aint displacements[3];
+    struct pixel dummy_pixel;
+    MPI_Aint base_address;
+    MPI_Get_address(&dummy_pixel, &base_address);
+    MPI_Get_address(&dummy_pixel.r, &displacements[0]);
+    MPI_Get_address(&dummy_pixel.g, &displacements[1]);
+    MPI_Get_address(&dummy_pixel.b, &displacements[2]);
+    displacements[0] = MPI_Aint_diff(displacements[0], base_address);
+    displacements[1] = MPI_Aint_diff(displacements[1], base_address);
+    displacements[2] = MPI_Aint_diff(displacements[2], base_address);
+
+    MPI_Datatype types[3] = {MPI_INT, MPI_INT, MPI_INT};
+    MPI_Type_create_struct(3, lengths, displacements, types, &Pixel_MPI);
+    MPI_Type_commit(&Pixel_MPI);
+
+/* Check command-line arguments */
+    if ( argc < 3 ){
+        MPI_Finalize();
         fprintf( stderr, "Usage: %s input.gif output.gif \n", argv[0] ) ;
         return 1 ;
     }
 
-    //rank 0 stuff
-    if (rank == 0) { 
-        //reading file
+    int padding = 6; //for the splitting later on
+    image = (animated_gif *)malloc(sizeof(animated_gif)); 
+//only the first process reads the file
+    if (process_Rank == 0){ 
         input_filename = argv[1] ;
         output_filename = argv[2] ;
 
@@ -905,150 +1009,214 @@ main( int argc, char ** argv )
 
         duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
 
-        printf( "GIF loaded from file %s with %d image(s) in %lf s\n", 
-                input_filename, image->n_images, duration ) ;
+        printf( "GIF loaded from file %s with %d image(s) of dim w x h (%d, %d) in %lf s\n", 
+                input_filename, image->n_images, image->width[0], image->height[0], duration ) ;
 
-        //distributing tasks (splitting the gif into images)
-        gettimeofday(&t1, NULL); //the other half is only done by rank 0
-
-        for (int i = 0; i < image -> n_images; i++) {
-            //ready to work, this should contain an array with the processed file too
-            MPI_Recv(&msg, 1, MPI_INT, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, &status); 
-            machine_to = status.MPI_SOURCE;
-            printf("image %d, work_status = %d, sending to = %d\n",  i, work, machine_to);
-            //by default the very first msg will be 0
-            if (msg == 1){
-                //have image to receive
-                MPI_Recv(&msg, 1, MPI_INT, machine_to, 1, MPI_COMM_WORLD, &status);
-                image_no = msg; //number of the image processed
-                for (j = 0; j < image->width[image_no] * image->height[image_no]; j++){
-                    //receive the image info
-                    MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //r pixel
-                    image -> p[image_no][j].r = msg;
-                    MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //g pixel
-                    image -> p[image_no][j].g = msg;
-                    MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //b pixel
-                    image -> p[image_no][j].b = msg;
-                }
-            } 
-            //send image to block
-            msg = 0;
-            MPI_Send(&msg, 1, MPI_INT, machine_to, 1, MPI_COMM_WORLD); //start of information
-            msg = i;
-            MPI_Send(&msg, 1, MPI_INT, machine_to, 1, MPI_COMM_WORLD); //image number
-            msg = image -> width[i];
-            MPI_Send(&msg, 1, MPI_INT, machine_to, 1, MPI_COMM_WORLD); //width
-            msg = image -> height[i];
-            MPI_Send(&msg, 1, MPI_INT, machine_to, 1, MPI_COMM_WORLD); //height
-            for ( j = 0 ; j < image->width[i] * image->height[i] ; j++ ) { 
-                //sending for each pixel of image i
-                msg = image -> p[i][j].r;
-                MPI_Send(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD); //r pixel
-                msg = image -> p[i][j].g;
-                MPI_Send(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD); //g pixel
-                msg = image -> p[i][j].b;
-                MPI_Send(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD); //b pixel
-            }
-        }
-        //no more images to send, telling processes to stop
-        for (int i = 0; i < size; i++){
-            MPI_Recv(&msg, 1, MPI_INT, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, &status); 
-            if (msg = 1){
-                //have image to receive
-                MPI_Recv(&msg, 1, MPI_INT, machine_to, 1, MPI_COMM_WORLD, &status);
-                image_no = msg; //number of the image processed
-                for (j = 0; j < image->width[image_no] * image->height[image_no]; j++){
-                    //receive the image info
-                    MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //r pixel
-                    image -> p[image_no][j].r = msg;
-                    MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //g pixel
-                    image -> p[image_no][j].g = msg;
-                    MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //b pixel
-                    image -> p[image_no][j].b = msg;
-                }
-            }
-            msg = -1;
-            MPI_Send(&msg, 1, MPI_INT, status.MPI_SOURCE, 1, MPI_COMM_WORLD); //nothing else to do and end process
-        }
-        //images are updated directly
-
-    } else { //for non root machine
-        msg = 0;
-        MPI_Send(&msg, 1, MPI_INT, 0, 1, MPI_COMM_WORLD); //ready to work
-
-        MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //start of info
-        work = msg;
-        while (work == 0){
-            //allocating memory for image here
-            n_images = 1;
-            width = (int *)malloc( 1 * sizeof(int)); //its just a single image here
-            height = (int *)malloc( 1 * sizeof(int));
-            p = (pixel **)malloc ( 1 * sizeof(pixel *));
-            
-            MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //image number
-            image_no = msg;
-            MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //width
-            width[0] = msg;
-            MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //height
-            height[0] = msg;
-            for (j = 0; j < width[0] * height[0]; j++){ //allocating memory for pixels
-                p[j] = (pixel *)malloc(width[0] * height[0] * sizeof(pixel));
-            }
-
-            for ( j = 0 ; j < w * h ; j++ ) {
-                // maybe just send each pixel individually
-                MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //r pixel
-                image -> p[0][j].r = msg;
-                MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //g pixel
-                image -> p[0][j].g = msg;
-                MPI_Recv(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE); //b pixel
-                image -> p[0][j].b = msg;
-            }
-            
-            //process image
-            apply_gray_filter(image);
-            apply_blur_filter(image, 5, 20);
-            apply_sobel_filter(image);
-
-            //send the image 
-            msg = 1; 
-            MPI_Send(&msg, 1, MPI_INT, 0, 1, MPI_COMM_WORLD); //letting root know there is an image
-            msg = image_no;
-            MPI_Send(&msg, 1, MPI_INT, 0, 1, MPI_COMM_WORLD);
-            for ( j = 0 ; j < w * h ; j++ ) {
-                msg = image -> p[0][j].r;
-                MPI_Send(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD); //r pixel
-                msg = image -> p[0][j].g;
-                MPI_Send(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD); //g pixel
-                msg = image -> p[0][j].b;
-                MPI_Send(&msg, 1, MPI_INT, 0, 1 ,MPI_COMM_WORLD); //b pixel
-                // a bit more nasty than it is
-            }
-
-            MPI_Recv(&msg, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, &status); //checking if there is still something to do
-            work = msg;
-        }
+    }
+        
+//pre-processing image before sharing
+    if (process_Rank == 0){ 
+        gettimeofday(&t1, NULL);
+        num_images = image -> n_images;
     }
 
+//setting up the gif to store data for each node
+    MPI_Bcast(&num_images, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    
+    img_temp = (animated_gif *)malloc(sizeof(animated_gif));
 
-    //Single process
-    ///* Convert the pixels into grayscale */
-    //apply_gray_filter( image ) ;
+    img_temp -> n_images = num_images; 
+    img_temp -> p = (pixel **)malloc(num_images * sizeof(pixel *));
+    img_temp -> width = (int *)malloc(num_images * sizeof(int));
+    img_temp -> height = (int *)malloc(num_images * sizeof(int));
 
-    ///* Apply blur filter with convergence value */
-    //apply_blur_filter( image, 5, 20 ) ;
+    send_pixels = (pixel **)malloc(num_images * sizeof(pixel *));
 
-    ///* Apply sobel filter on pixels */
-    //apply_sobel_filter( image ) ;
+    displacement = (int **)malloc(num_images * sizeof(int *));
+    scounts = (int **)malloc(num_images * sizeof(int *));
+    original_split = (int **)malloc(num_images * sizeof(int *));
+//
+    if (process_Rank == 0){ 
+        gettimeofday(&t3, NULL);
+    }
+    
+    for (int i = 0; i < num_images; i++){
+    //setting split points
+        displacement[i] = (int *)malloc(size_of_Cluster * sizeof(int));
+        scounts[i] = (int *)malloc(size_of_Cluster * sizeof(int));
+        original_split[i] = (int *)malloc(size_of_Cluster * sizeof(int));
 
-    if (rank == 0) { //only first rank does these stuff
-        /* Overall Timer stop */
+        if (process_Rank == 0){
+            img_temp -> width[i] = image -> width[i];
+            img_temp -> height[i] = image -> height[i];
+        }
+        MPI_Bcast(&img_temp -> width[i], 1, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&img_temp -> height[i], 1, MPI_INT, 0, MPI_COMM_WORLD);
+    }
+
+    //#pragma omp parallel for //omp doesnt give any advantage here, in fact its worse
+    for (int i = 0; i < num_images; i++){
+        img_width = img_temp -> width[i];
+        img_height = img_temp -> height[i];
+
+        int sub_width = img_width/size_of_Cluster;
+        int extra = img_width % size_of_Cluster;
+
+        img_temp -> width[i] = sub_width;
+        img_temp -> height[i] = img_height;
+        if (process_Rank < extra){
+            img_temp -> width[i] += 1;
+        }
+        if (process_Rank > 0){
+            img_temp -> width[i] += padding;
+        }
+        if (process_Rank < size_of_Cluster - 1){
+            img_temp -> width[i] += padding;
+        }
+
+        //this should be omp-able
+        for (int j = 0; j < size_of_Cluster; j++){
+            if (j < extra){
+                original_split[i][j] = j * (sub_width + 1);
+                displacement[i][j] = j * (sub_width + 1) * img_height;
+                scounts[i][j] = (sub_width + 1) * img_height;
+            } else {
+                original_split[i][j] = (j * sub_width) + extra;
+                displacement[i][j] = ((j * sub_width) + extra) * img_height;
+                scounts[i][j] = sub_width * img_height;
+            }
+            if (j != 0){
+                displacement[i][j] += padding * (j * 2 - 1) * img_height;
+                scounts[i][j] += padding * img_height;
+            }
+            if (j != size_of_Cluster - 1){
+                scounts[i][j] += padding * img_height;
+            }
+        }
+    }
+    if (process_Rank == 0){
+        gettimeofday(&t4, NULL);
+        duration = (t4.tv_sec - t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
+        printf("pre-processing setup in %lf s\n", duration);
+    }
+    
+    
+    if (process_Rank == 0){
+        gettimeofday(&t3, NULL);
+        //#pragma omp parallel for private(for_free) //not sure if this does anything
+        for (int i = 0; i < num_images; i++){
+            for_free = transpose(image -> p[i], image -> width[i], image -> height[i]);
+            send_pixels[i] = pad_frame(for_free, image->height[i], image -> width[i], original_split[i], size_of_Cluster, padding); //the implementation here is a bit weird
+            
+            free(image -> p[i]);
+            free(for_free);
+        }
+        gettimeofday(&t4, NULL);
+        duration = (t4.tv_sec - t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
+        printf("pre-processing (before sending) in %lf s\n", duration);
+    
+    }
+    if (process_Rank == 0){
+        gettimeofday(&t3, NULL);
+    }
+    for (int i = 0; i < num_images; i++){
+        for_free = (pixel *)malloc(scounts[i][process_Rank] * sizeof(pixel));
+
+        MPI_Scatterv(send_pixels[i], scounts[i], displacement[i], Pixel_MPI, for_free, scounts[i][process_Rank], Pixel_MPI, 0, MPI_COMM_WORLD);
+        //MPI_Barrier(MPI_COMM_WORLD); //just seeing if everything reaches here
+
+        #pragma omp parallel //im not sure if this has any benefits
+        {
+            #pragma omp single
+            img_temp -> p[i] = transpose(for_free, img_temp -> height[i], img_temp -> width[i]);
+        }
+        free(for_free);
+    }
+
+    if (process_Rank == 0){
+        gettimeofday(&t4, NULL);
+        duration = (t4.tv_sec - t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
+        printf("gif shared in %lf s\n", duration);
+ 
         gettimeofday(&t2, NULL);
-
+    
         duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
+    
+        printf("Image processed and shared in %lf s\n", duration);
+    }
+    
+    /* FILTER Timer start */
+    gettimeofday(&t1, NULL);
 
-        printf( "SOBEL done in %lf s\n", duration ) ;
+    gettimeofday(&t3, NULL);
+    /* Convert the pixels into grayscale */
+    apply_gray_filter( img_temp ) ;
+ 
+    gettimeofday(&t4, NULL);
+    duration = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
+    
+    printf("gray filter pre sobel in %lf s on machine  %d\n", duration, process_Rank);
 
+    /* Apply blur filter with convergence value */
+    apply_blur_filter( img_temp, 5, 20 ) ;
+    
+    gettimeofday(&t4, NULL);
+    duration = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
+    
+    printf("blur filter pre sobel in %lf s on machine %d\n", duration, process_Rank);
+
+   
+    /* Apply sobel filter on pixels */
+    apply_sobel_filter( img_temp ) ;
+    
+    /* FILTER Timer stop */
+    gettimeofday(&t2, NULL);
+
+    duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
+
+    printf( "SOBEL done in %lf s on machine %d\n", duration, process_Rank ) ;
+
+    //getting time for gather on machine 1
+    if (process_Rank == 0){
+        gettimeofday(&t1, NULL);
+    }
+
+    for (int i = 0; i < num_images; i++){
+        for_free = transpose(img_temp -> p[i], img_temp -> width[i], img_temp -> height[i]);
+        free(img_temp -> p[i]);
+        MPI_Gatherv(for_free, scounts[i][process_Rank], Pixel_MPI,
+                    send_pixels[i], scounts[i], displacement[i], Pixel_MPI, 
+                    0, MPI_COMM_WORLD);
+        free(for_free);
+        //MPI_Barrier(MPI_COMM_WORLD);
+    }    
+
+    if (process_Rank == 0){
+        gettimeofday(&t2, NULL);
+        duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
+        printf( "Gathered in %lf s\n", duration) ;
+    }
+    
+     
+    if (process_Rank == 0){
+
+        gettimeofday(&t3, NULL);
+        //#pragma omp parallel for private(for_free) //don't know if this is useful
+        for (int i = 0; i < image -> n_images; i++){
+    
+            for_free = pad_remove(send_pixels[i], image -> height[i], image -> width[i], original_split[i], size_of_Cluster, padding);
+   
+            image -> p[i] = transpose(for_free, image -> height[i], image -> width[i]);
+    
+            free(send_pixels[i]);
+            free(for_free);
+        }
+        gettimeofday(&t4, NULL);
+        duration = (t4.tv_sec - t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
+        printf("post-processed in %lf s\n", duration);
+}
+
+    if (process_Rank == 0){
         /* EXPORT Timer start */
         gettimeofday(&t1, NULL);
 
@@ -1062,6 +1230,25 @@ main( int argc, char ** argv )
 
         printf( "Export done in %lf s in file %s\n", duration, output_filename ) ;
     }
+    
+    for (int i = 0; i < num_images; i++){
+        //free(img_temp -> p[i]);
+        //free(send_pixels[i]); 
+        free(original_split[i]);
+        free(scounts[i]);
+        free(displacement[i]);
+    }
+    free(img_temp -> p);
+    free(img_temp -> width);
+    free(img_temp -> height);
+    free(send_pixels);
+    
+    free(displacement);
+    free(scounts);
+    free(original_split);
+    free(img_temp);
+    
+    MPI_Finalize();
 
     return 0 ;
 }
