@@ -600,6 +600,8 @@ apply_gray_filter( animated_gif * image )
     }
 }
 
+void apply_gray_filter_gpu(animated_gif * image);
+
 #define CONV(l,c,nb_c) \
     (l)*(nb_c)+(c)
 
@@ -623,6 +625,8 @@ void apply_gray_line( animated_gif * image )
         }
     }
 }
+
+void apply_gray_line_gpu( animated_gif * image);
 
 void
 apply_blur_filter( animated_gif * image, int size, int threshold )
@@ -771,6 +775,8 @@ apply_blur_filter( animated_gif * image, int size, int threshold )
 
 }
 
+void apply_blur_filter_gpu( animated_gif * image, int size, int threshold);
+
 void
 apply_sobel_filter( animated_gif * image )
 {
@@ -847,6 +853,8 @@ apply_sobel_filter( animated_gif * image )
     }
 
 }
+
+void apply_sobel_filter_gpu( animated_gif * image);
 
 //transpose the (1d array) //i think its best to avoid parallelising on this level, or leave it for cuda
 pixel *
@@ -1150,7 +1158,7 @@ main( int argc, char ** argv )
 
     gettimeofday(&t3, NULL);
     /* Convert the pixels into grayscale */
-    apply_gray_filter( img_temp ) ;
+    apply_gray_filter_gpu( img_temp ) ;
  
     gettimeofday(&t4, NULL);
     duration = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
@@ -1158,7 +1166,7 @@ main( int argc, char ** argv )
     printf("gray filter pre sobel in %lf s on machine  %d\n", duration, process_Rank);
 
     /* Apply blur filter with convergence value */
-    apply_blur_filter( img_temp, 5, 20 ) ;
+    apply_blur_filter_gpu( img_temp, 5, 20 ) ;
     
     gettimeofday(&t4, NULL);
     duration = (t4.tv_sec -t3.tv_sec)+((t4.tv_usec-t3.tv_usec)/1e6);
@@ -1167,7 +1175,7 @@ main( int argc, char ** argv )
 
    
     /* Apply sobel filter on pixels */
-    apply_sobel_filter( img_temp ) ;
+    apply_sobel_filter_gpu( img_temp ) ;
     
     /* FILTER Timer stop */
     gettimeofday(&t2, NULL);
